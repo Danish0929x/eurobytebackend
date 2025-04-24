@@ -1,0 +1,27 @@
+const mongoose = require("mongoose");
+
+const profileSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  fullname: {
+    type: String,
+    required: true
+  },
+  withdrawAddress: {
+    type: String,
+     default: ""
+  },
+  phone: {
+    type: String,
+    required: true
+  },
+  joinDate: { 
+    type: Date, 
+    default: Date.now 
+  }
+}, { timestamps: true });
+
+module.exports = mongoose.model("Profile", profileSchema);
