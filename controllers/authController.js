@@ -72,7 +72,7 @@ exports.register = async (req, res) => {
       data: {
         userId,
         encryptedPassword,
-        decryptedPassword: password, 
+        decryptedPassword: password,
       },
     });
   } catch (err) {
@@ -146,10 +146,11 @@ exports.login = async (req, res) => {
         .status(403)
         .json({ message: "Account not verified or inactive" });
     }
+
     // Generate JWT token
-     const token = jwt.sign({ userId, id: user._id }, process.env.JWT_SECRET, {
-          expiresIn: "7d",
-        });
+    const token = jwt.sign({ userId, id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.status(200).json({
       message: "Login Successful",
@@ -222,50 +223,65 @@ exports.resetPassword = async (req, res) => {
     // Validate inputs
     if (!userId || !email || !otp || !newPassword) {
       return res.status(400).json({
-        message: "User ID, email, OTP, and new password are required",
+        success: false,
+        message: "All fields are required",
+        missingFields: {
+          userId: !userId,
+          email: !email,
+          otp: !otp,
+          newPassword: !newPassword,
+        },
       });
     }
 
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: "User with this email does not exist" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    // Verify user ID matches the one we found
+    // Verify user ID matches
     if (user.userId !== userId) {
-      return res.status(400).json({ message: "User ID doesn't match email" });
+      return res.status(403).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
-    // Check if the OTP is valid and has not expired
-    const isOTPValid = await verifyOTP(user._id, otp);
+    // Verify OTP
+    const isOTPValid = await verifyOTP(user._id.toString(), otp);
     if (!isOTPValid) {
-      return res
-        .status(400)
-        .json({ message: "Invalid OTP or OTP has expired" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
     }
 
-    // Update the password
-    const salt = await bcrypt.genSalt(10);
-    const secPassword = await bcrypt.hash(newPassword, salt);
-    user.password = secPassword;
+    // Encrypt new password (consistent with registration)
+    const encryptedPassword = encrypt(newPassword);
 
-    // Clear OTP fields
-    user.otp = null;
-    user.otpTimestamp = null;
-    await user.save();
+    // Update user with encrypted password
+    await User.findByIdAndUpdate(user._id, {
+      password: encryptedPassword,
+      $unset: {
+        otp: 1,
+        otpTimestamp: 1,
+      },
+    });
 
     res.status(200).json({
       success: true,
-      message: "Password reset successful",
+      message: "Password reset successfully",
     });
   } catch (error) {
-    console.error("Error in resetPasswordController:", error);
+    console.error("Password reset error:", error);
     res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: "Internal server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
