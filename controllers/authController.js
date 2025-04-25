@@ -141,7 +141,7 @@ exports.login = async (req, res) => {
     }
 
     // Check verification/status
-    if (!user.verified || user.status !== "Active") {
+    if (user.verified && user.status === "Active") {
       return res
         .status(403)
         .json({ message: "Account not verified or inactive" });
