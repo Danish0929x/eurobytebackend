@@ -141,7 +141,7 @@ exports.login = async (req, res) => {
     }
 
     // Check verification/status
-    console.log(user.verified, user.status);
+    // console.log(user.verified, user.status);
     if (!user.verified && user.status === "Inactive") {
       return res
         .status(403)
