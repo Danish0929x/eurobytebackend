@@ -30,7 +30,7 @@ app.use('/api/package', require('./routes/packageRoutes'));
 app.get('/', (req, res) => {
   res.json({ 
     status: 'running',
-    service: 'TRT Tierion Backend',
+    service: 'EURO BYTE Backend',
     timestamp: new Date().toISOString()
   });
 });

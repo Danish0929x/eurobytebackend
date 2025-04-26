@@ -44,8 +44,8 @@ exports.register = async (req, res) => {
       phone,
       password: encryptedPassword,
       referrer,
-      isVerified: false,
-      status: "Inactive",
+      isVerified: true, // Set to true since we're skipping OTP
+      status: "Active", // Set to active immediately
     });
 
     // Create profile
@@ -63,14 +63,17 @@ exports.register = async (req, res) => {
       USDTBalance: 0,
     });
 
-    await generateAndSaveOTP(user._id.toString()); // Generate OTP
 
     // Return response (INSECURE - includes decrypted password)
     res.status(201).json({
       success: true,
-      message: "Registration successful. OTP sent to email",
+      message: "Registration successful",
       data: {
         userId,
+        email,
+        fullname,
+        phone,
+        status: "Active", 
         encryptedPassword,
         decryptedPassword: password,
       },
