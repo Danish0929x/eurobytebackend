@@ -5,6 +5,6 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 // Protected routes (require authentication)
 router.get('/getreferralname/:id', referralController.getReferralNameById);
-router.get('/getreferralcount', authMiddleware, referralController.getReferrals);
+router.post('/getreferrals', authMiddleware, referralController.getReferrals);
 
 module.exports = router;
