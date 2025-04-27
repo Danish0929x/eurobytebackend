@@ -25,7 +25,7 @@ exports.createPackage = async (req, res) => {
       userId,
       packageAmount,
       startDate: new Date(),
-      status: 'active'
+      status: 'Active'
     });
 
     res.status(200).json({
@@ -45,6 +45,48 @@ exports.createPackage = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create package",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+
+exports.getPackagesByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate userId
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required"
+      });
+    }
+
+    // Find all packages for the user
+    const packages = await Package.find({ userId })
+      .sort({ startDate: -1 }) // Sort by newest first
+      .select('packageAmount startDate status createdAt');
+
+    if (!packages || packages.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No packages found for this user"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Packages retrieved successfully",
+      data: packages,
+      count: packages.length
+    });
+
+  } catch (error) {
+    console.error("Error fetching packages:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch packages",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

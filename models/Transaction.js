@@ -23,7 +23,7 @@ const transactionSchema = new mongoose.Schema({
   txn: {
     type: String
   },
-  liveToken: {
+  currentBalance: {
     type: "Number"
   },
   status: {

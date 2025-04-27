@@ -17,10 +17,6 @@ const profileSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true
-  },
-  joinDate: { 
-    type: Date, 
-    default: Date.now 
   }
 }, { timestamps: true });
 

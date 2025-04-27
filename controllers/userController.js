@@ -42,7 +42,7 @@ exports.getUser = async (req, res) => {
 // ROUTE: 2 Update profile: PUT "/api/user/update-profile". It may require auth
 exports.updateProfile = async (req, res) => {
   try {
-    const { userId, fullName, withdrawalAddress } = req.body;
+    const { userId, fullName, withdrawalAddress, phone } = req.body;
 
     // Validate userId matches authenticated user
     if (userId !== req.user.userId) {
@@ -61,27 +61,56 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    // Prepare update
-    const updates = {};
-    if (fullName !== undefined) updates.fullname = fullName;
-    if (withdrawalAddress !== undefined)
-      updates.withdrawAddress = withdrawalAddress;
+    // Prepare updates
+    const profileUpdates = {};
+    const userUpdates = {};
 
-    // Apply updates
-    const updatedProfile = await Profile.findOneAndUpdate({ userId }, updates, {
-      new: true,
-      runValidators: true,
-    });
-
-    // Sync name to User model if changed
     if (fullName !== undefined) {
-      await User.findOneAndUpdate({ userId }, { fullname: fullName });
+      profileUpdates.fullname = fullName;
+      userUpdates.fullname = fullName;
+    }
+
+    if (withdrawalAddress !== undefined) {
+      profileUpdates.withdrawAddress = withdrawalAddress;
+    }
+
+    if (phone !== undefined) {
+      // Basic phone number validation
+      if (!/^\d{10,15}$/.test(phone)) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone number must be 10-15 digits",
+        });
+      }
+      profileUpdates.phone = phone;
+      userUpdates.phone = phone;
+    }
+
+    // Apply profile updates
+    const updatedProfile = await Profile.findOneAndUpdate(
+      { userId },
+      profileUpdates,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    // Sync updates to User model if needed
+    if (Object.keys(userUpdates).length > 0) {
+      await User.findOneAndUpdate({ userId }, userUpdates);
     }
 
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedProfile,
+      data: {
+        userId: updatedProfile.userId,
+        fullname: updatedProfile.fullname,
+        phone: updatedProfile.phone,
+        withdrawAddress: updatedProfile.withdrawAddress,
+        updatedAt: updatedProfile.updatedAt
+      },
     });
   } catch (error) {
     console.error("Update error:", error);
@@ -129,10 +158,7 @@ exports.getProfile = async (req, res) => {
       fullname: profile.fullname,
       email: user.email,
       phone: profile.phone,
-      withdrawAddress: profile.withdrawAddress,
-      status: user.status,
-      isVerified: user.isVerified,
-      joinDate: profile.createdAt,
+      withdrawAddress: profile.withdrawAddress
     };
 
     res.status(200).json({
