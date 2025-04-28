@@ -106,8 +106,6 @@ exports.updateProfile = async (req, res) => {
 };
 
 
-
-
 // ROUTE 3: Get user profile - GET "/api/user/get-profile"
 exports.getProfile = async (req, res) => {
   try {
@@ -141,9 +139,9 @@ exports.getProfile = async (req, res) => {
     // Combine relevant data
     const profileData = {
       userId: user.userId,
-      fullname: user.fullname,
+      fullname: user.fullname,  // Fetch fullname from User model instead of Profile
       email: user.email,
-      phone: user.phone,
+      phone: profile.phone,
       withdrawAddress: profile.withdrawAddress,
       status: user.status,
       isVerified: user.isVerified,
@@ -164,6 +162,7 @@ exports.getProfile = async (req, res) => {
     });
   }
 };
+
 
 // ROUTE 4: Get user wallet - GET "/api/user/get-wallet"
 exports.getWallet = async (req, res) => {

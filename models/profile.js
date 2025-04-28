@@ -9,6 +9,10 @@ const profileSchema = new mongoose.Schema({
   withdrawAddress: {
     type: String,
      default: ""
+  },
+  phone: {
+    type: String,
+    required: true
   }
 }, { timestamps: true });
 
