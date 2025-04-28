@@ -14,23 +14,10 @@ const packageSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   },
-  endDate: {
-    type: Date
-  },
   status: {
     type: String,
-    enum: ['active', 'expired', 'cancelled'],
-    default: 'active'
-  },
-//   packageType: {
-//     type: String,
-//     enum: ['basic', 'standard', 'premium'],
-//     required: true
-//   },
-//   transactions: [{
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: 'Transaction'
-//   }]
-}, { timestamps: true });
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
+  }}, { timestamps: true });
 
 module.exports = mongoose.model('Package', packageSchema);

@@ -6,21 +6,9 @@ const profileSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  fullname: {
-    type: String,
-    required: true
-  },
   withdrawAddress: {
     type: String,
      default: ""
-  },
-  phone: {
-    type: String,
-    required: true
-  },
-  joinDate: { 
-    type: Date, 
-    default: Date.now 
   }
 }, { timestamps: true });
 

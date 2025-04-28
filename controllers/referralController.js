@@ -1,54 +1,7 @@
 const User = require("../models/User");
-const mongoose = require("mongoose");
-
-// Helper function to get referral tree (updated)
-const getReferralTree = async (userId, depthLevel = 5) => {
-  try {
-    const pipeline = [
-      {
-        $match: { userId: userId }, // Match by userId string
-      },
-      {
-        $graphLookup: {
-          from: "users",
-          startWith: "$userId",
-          connectFromField: "userId",
-          connectToField: "referrer",
-          maxDepth: depthLevel,
-          depthField: "level",
-          as: "referrals",
-          restrictSearchWithMatch: {
-            verified: true,
-            status: "Active",
-          },
-        },
-      },
-      { $unwind: "$referrals" },
-      {
-        $group: {
-          _id: "$referrals.level",
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ];
-
-    const results = await User.aggregate(pipeline);
-
-    const referralCounts = {};
-    results.forEach((item) => {
-      referralCounts[`Level${item._id + 1}`] = item.count;
-    });
-
-    return referralCounts;
-  } catch (error) {
-    console.error("Error in getReferralTree:", error);
-    throw error;
-  }
-};
 
 // ROUTE: 1 Get referral name: GET "/api/auth/getreferralname/:id". It requires auth
-exports.getReferralNameById = async (req, res) => {
+async function getReferralNameById(req, res) {
   try {
     const { id } = req.params;
 
@@ -84,58 +37,93 @@ exports.getReferralNameById = async (req, res) => {
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
-};
+}
+async function getReferrals(req, res) {
+  const userId = req.user.userId;
+  const { depthLimit } = req.body;
 
-// ROUTE: 2 Get referral count: GET "/api/auth/getreferralcount". It requires auth
-exports.getReferrals = async (req, res) => {
   try {
-    const userId = req.params.userId || req.body.userId;
+    const user = await User.findOne({ userId: userId });
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required",
-      });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Verify user exists
-    const member = await User.findOne({ userId });
-    if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+    const referrals = await getReferralTree(userId, depthLimit);
 
-    // Pass userId string instead of _id
-    const referralCountByLevel = await getReferralTree(userId);
+    // Flatten the referral tree into a single array
+    const flattened = referrals.map((ref, index) => ({
+      sn: index + 1, // Add serial number (sn)
+      userId: ref.userId || "none",
+      name: ref.Name || "none",
+      referrer: ref.referrer || "none",
+      registrationDate: ref.RegistrationDate || "none",
+      investmentAmount: ref.InvestedAmount || 0,
+      level: ref.Level,
+      status: ref.InvestedAmount > 0 ? "Active" : "Inactive",
+    }));
 
-    // Format response
-    const response = {
+    res.json({
       success: true,
-      referralCountByLevel: {
-        Level1: referralCountByLevel.Level1 || 0,
-        Level2: referralCountByLevel.Level2 || 0,
-        Level3: referralCountByLevel.Level3 || 0,
-        Level4: referralCountByLevel.Level4 || 0,
-        Level5: referralCountByLevel.Level5 || 0,
-      },
-    };
-
-    // Add message if no referrals
-    if (
-      Object.values(response.referralCountByLevel).every((count) => count === 0)
-    ) {
-      response.message = "No active referrals found";
-    }
-
-    res.status(200).json(response);
-  } catch (error) {
-    console.error("Error getting referrals:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get referrals",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      message: "Referral tree fetched successfully",
+      data: flattened,
     });
+
+  } catch (error) {
+    console.error("Error fetching referrals:", error);
+    res.status(500).json({ message: "Error fetching referrals", error: error.message });
   }
-};
+}
+
+async function getReferralTree(userId, depthLevel = 5) {
+  const pipeline = [
+    {
+      $match: { userId: userId },
+    },
+    {
+      $graphLookup: {
+        from: "users",
+        startWith: "$userId",
+        connectFromField: "userId",
+        connectToField: "referrer",
+        maxDepth: depthLevel - 1, // Subtract 1 because we start counting from the userId
+        depthField: "level",
+        as: "referrals",
+      },
+    },
+    {
+      $unwind: "$referrals",
+    },
+    {
+      $project: {
+        userId: "$referrals.userId",
+        referrer: "$referrals.referrer", // Referrer is now included in the projection
+        Name: "$referrals.fullname",
+        RegistrationDate: "$referrals.createdAt",
+        Level: { $add: ["$referrals.level", 1] }, // Add 1 to the level for better clarity
+        InvestedAmount: { $literal: 0 }, // Placeholder for InvestedAmount, adjust if needed
+      },
+    },
+    {
+      $sort: { Level: 1, RegistrationDate: 1 }, // Sorting by Level and then Registration Date
+    },
+  ];
+
+  try {
+    const response = await User.aggregate(pipeline).exec();
+    return response;
+  } catch (error) {
+    console.error("Error in aggregation:", error);
+    throw error;
+  }
+}
+
+
+
+
+
+// EXPORTS
+module.exports = {
+  getReferralNameById,
+  getReferrals,
+}

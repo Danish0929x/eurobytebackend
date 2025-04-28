@@ -41,8 +41,9 @@ exports.getUser = async (req, res) => {
 };
 // ROUTE: 2 Update profile: PUT "/api/user/update-profile". It may require auth
 exports.updateProfile = async (req, res) => {
+  const userId = req.user.userId;
   try {
-    const { userId, fullName, withdrawalAddress } = req.body;
+    const { fullname, phone, withdrawalAddress } = req.body;
 
     // Validate userId matches authenticated user
     if (userId !== req.user.userId) {
@@ -52,46 +53,60 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    // Find and validate profile
-    const profile = await Profile.findOne({ userId });
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found",
-      });
+    // Prepare User updates
+    const userUpdates = {};
+    if (fullname !== undefined) userUpdates.fullname = fullname;
+    if (phone !== undefined) userUpdates.phone = phone;
+
+    // Prepare Profile updates
+    const profileUpdates = {};
+    if (withdrawalAddress !== undefined) profileUpdates.withdrawAddress = withdrawalAddress;
+
+    // If nothing to update
+    if (Object.keys(userUpdates).length === 0 && Object.keys(profileUpdates).length === 0) {
+      return res.status(400).json({ success: false, message: "No fields to update" });
     }
 
-    // Prepare update
-    const updates = {};
-    if (fullName !== undefined) updates.fullname = fullName;
-    if (withdrawalAddress !== undefined)
-      updates.withdrawAddress = withdrawalAddress;
+    // Parallel updates
+    await Promise.all([
+      User.findOneAndUpdate({ userId }, userUpdates, { new: true, runValidators: true }),
+      Profile.findOneAndUpdate({ userId }, profileUpdates, { new: true, runValidators: true }),
+    ]);
 
-    // Apply updates
-    const updatedProfile = await Profile.findOneAndUpdate({ userId }, updates, {
-      new: true,
-      runValidators: true,
-    });
+    // Fetch updated data
+    const [updatedUser, updatedProfile] = await Promise.all([
+      User.findOne({ userId }),
+      Profile.findOne({ userId }),
+    ]);
 
-    // Sync name to User model if changed
-    if (fullName !== undefined) {
-      await User.findOneAndUpdate({ userId }, { fullname: fullName });
+    if (!updatedUser || !updatedProfile) {
+      return res.status(404).json({ success: false, message: "Profile not found after update" });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Profile updated successfully",
-      data: updatedProfile,
+      message: "Profile retrieved successfully",
+      data: {
+        userId: updatedUser.userId,
+        email: updatedUser.email,
+        fullname: updatedUser.fullname, // ➡️ Added fullname here
+        withdrawAddress: updatedProfile.withdrawAddress || "",
+        status: updatedUser.status,
+        joinDate: updatedUser.createdAt
+      }
     });
+
   } catch (error) {
     console.error("Update error:", error);
     return res.status(500).json({
       success: false,
       message: "Profile update failed",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
+
+
+
 
 // ROUTE 3: Get user profile - GET "/api/user/get-profile"
 exports.getProfile = async (req, res) => {
@@ -126,9 +141,9 @@ exports.getProfile = async (req, res) => {
     // Combine relevant data
     const profileData = {
       userId: user.userId,
-      fullname: profile.fullname,
+      fullname: user.fullname,
       email: user.email,
-      phone: profile.phone,
+      phone: user.phone,
       withdrawAddress: profile.withdrawAddress,
       status: user.status,
       isVerified: user.isVerified,

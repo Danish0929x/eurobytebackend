@@ -135,36 +135,26 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // DECRYPT the stored password (instead of bcrypt.compare)
     const decryptedPassword = decrypt(user.password);
 
-    // Compare plaintext passwords
     if (password !== decryptedPassword) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Check verification/status
-    // console.log(user.verified, user.status);
-    if (!user.verified && user.status === "Inactive") {
-      return res
-        .status(403)
-        .json({ message: "Account not verified or inactive" });
-    }
-
-    // Generate JWT token
     const token = jwt.sign({ userId, id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
     res.status(200).json({
       message: "Login Successful",
-      data: { authToken: token },
+      token: token,
     });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
 
 //ROUTE: 4 Logout a user: POST "/api/auth/logoutUser". It requires auth
 exports.logoutUser = async (req, res) => {
