@@ -229,7 +229,7 @@ exports.getDashboard = async (req, res) => {
     const totalInvestment = await calculateTotalInvestment(userId);
 
     // 2. Get the total team business (sum of investments of downline users)
-    const totalTeamBusiness = await getTeamBusiness(userId);
+    // const totalTeamBusiness = await getTeamBusiness(userId);
 
     // 3. Get the USDT balance for the user
     const wallet = await Wallet.findOne({ userId: userId });
@@ -249,7 +249,7 @@ exports.getDashboard = async (req, res) => {
       message: "Dashboard data fetched successfully",
       data: {
         totalInvestment: totalInvestment, // Direct investment of the current user
-        totalTeamBusiness: totalTeamBusiness, // Business from the entire downline
+        // totalTeamBusiness: totalTeamBusiness, // Business from the entire downline
         usdtBalance: usdtBalance, // USDT balance for the current user
       },
     });
