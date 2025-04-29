@@ -8,5 +8,6 @@ router.get('/getuser', authMiddleware, userController.getUser);
 router.put('/update-profile', authMiddleware, userController.updateProfile);
 router.get('/get-profile', authMiddleware, userController.getProfile);
 router.get('/get-wallet', authMiddleware, userController.getWallet);
+router.get('/get-dashboard', authMiddleware, userController.getDashboard);
 
 module.exports = router;

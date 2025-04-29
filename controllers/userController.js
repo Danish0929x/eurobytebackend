@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const Profile = require("../models/profile");
 const Wallet = require("../models/Wallet");
+const { getTeamBusiness, calculateTotalInvestment } = require("../utils/getTeamBusiness");
 
 // ROUTE: 1 Get logged in user details: GET "/api/auth/getuser". It requires auth
 exports.getUser = async (req, res) => {
@@ -219,3 +220,46 @@ exports.getWallet = async (req, res) => {
     });
   }
 };
+
+exports.getDashboard = async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    // 1. Get the total investment for the user (direct investment)
+    const totalInvestment = await calculateTotalInvestment(userId);
+
+    // 2. Get the total team business (sum of investments of downline users)
+    const totalTeamBusiness = await getTeamBusiness(userId);
+
+    // 3. Get the USDT balance for the user
+    const wallet = await Wallet.findOne({ userId: userId });
+
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        message: "Wallet not found",
+      });
+    }
+
+    const usdtBalance = wallet.USDTBalance;
+
+    // 4. Return all the data in response
+    res.status(200).json({
+      success: true,
+      message: "Dashboard data fetched successfully",
+      data: {
+        totalInvestment: totalInvestment, // Direct investment of the current user
+        totalTeamBusiness: totalTeamBusiness, // Business from the entire downline
+        usdtBalance: usdtBalance, // USDT balance for the current user
+      },
+    });
+
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get dashboard data",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}

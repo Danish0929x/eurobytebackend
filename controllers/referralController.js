@@ -75,7 +75,7 @@ async function getReferrals(req, res) {
   }
 }
 
-async function getReferralTree(userId, depthLevel = 16) {
+async function getReferralTree(userId, depthLevel) {
   const pipeline = [
     {
       $match: { userId: userId },

@@ -53,7 +53,8 @@ exports.createPackage = async (req, res) => {
 
 exports.getPackagesByUserId = async (req, res) => {
   try {
-    const { userId } = req.params;
+
+    const userId = req.user.userId;
 
     // Validate userId
     if (!userId) {
@@ -78,8 +79,7 @@ exports.getPackagesByUserId = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Packages retrieved successfully",
-      data: packages,
-      count: packages.length
+      data: packages
     });
 
   } catch (error) {
