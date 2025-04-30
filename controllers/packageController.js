@@ -69,12 +69,6 @@ exports.getPackagesByUserId = async (req, res) => {
       .sort({ startDate: -1 }) // Sort by newest first
       .select('packageAmount startDate status createdAt');
 
-    if (!packages || packages.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No packages found for this user"
-      });
-    }
 
     res.status(200).json({
       success: true,
