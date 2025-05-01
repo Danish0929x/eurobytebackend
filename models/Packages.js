@@ -10,6 +10,10 @@ const packageSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    ROI: {
+      type: Number,
+      required: true,
+    },
     startDate: {
       type: Date,
       required: true,
