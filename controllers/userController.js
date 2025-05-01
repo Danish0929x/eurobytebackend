@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("../models/User");
 const Profile = require("../models/profile");
 const Wallet = require("../models/Wallet");
+const Transaction = require("../models/Transaction");
 const { getTeamBusiness, calculateTotalInvestment } = require("../utils/getTeamBusiness");
 
 // ROUTE: 1 Get logged in user details: GET "/api/auth/getuser". It requires auth
@@ -221,6 +222,7 @@ exports.getWallet = async (req, res) => {
   }
 };
 
+
 exports.getDashboard = async (req, res) => {
   const userId = req.user.userId;
 
@@ -232,7 +234,7 @@ exports.getDashboard = async (req, res) => {
     // const totalTeamBusiness = await getTeamBusiness(userId);
 
     // 3. Get the USDT balance for the user
-    const wallet = await Wallet.findOne({ userId: userId });
+    const wallet = await Wallet.findOne({ userId });
 
     if (!wallet) {
       return res.status(404).json({
@@ -243,17 +245,54 @@ exports.getDashboard = async (req, res) => {
 
     const usdtBalance = wallet.USDTBalance;
 
-    // 4. Return all the data in response
+    // 4. Get the sum of each type of bonus
+    const bonuses = {
+      directBonus: 0,
+      roi: 0,
+      growthLevelRoi: 0,
+      salaryIncome: 0,
+      royaltyIncome: 0,
+    };
+
+    // Query transactions for the user where the transactionRemark starts with each of the bonus types
+    const transactions = await Transaction.find({ userId });
+
+    transactions.forEach((transaction) => {
+      const { transactionRemark, creditedAmount } = transaction;
+
+      // Check the transactionRemark and sum up the creditedAmount based on the type
+      if (transactionRemark.startsWith("Direct Bonus")) {
+        bonuses.directBonus += creditedAmount;
+      } else if (transactionRemark.startsWith("ROI")) {
+        bonuses.roi += creditedAmount;
+      } else if (transactionRemark.startsWith("Growth Level ROI")) {
+        bonuses.growthLevelRoi += creditedAmount;
+      } else if (transactionRemark.startsWith("Salary Income")) {
+        bonuses.salaryIncome += creditedAmount;
+      } else if (transactionRemark.startsWith("Royalty Income")) {
+        bonuses.royaltyIncome += creditedAmount;
+      }
+    });
+
+    // 5. Get Direct Team count (users whose referrer is this user)
+    const directTeamCount = await User.countDocuments({ referrer: userId });
+
+    // 6. Calculate Total Income Earned (sum of all bonus types)
+    const totalIncomeEarned = bonuses.directBonus + bonuses.roi + bonuses.growthLevelRoi + bonuses.salaryIncome + bonuses.royaltyIncome;
+
+    // 7. Return all the data in response
     res.status(200).json({
       success: true,
       message: "Dashboard data fetched successfully",
       data: {
-        totalInvestment: totalInvestment, // Direct investment of the current user
-        // totalTeamBusiness: totalTeamBusiness, // Business from the entire downline
-        usdtBalance: usdtBalance, // USDT balance for the current user
+        totalInvestment, // Direct investment of the current user
+        // totalTeamBusiness, // Uncomment this if team business is needed
+        usdtBalance, // USDT balance for the current user
+        directTeamCount, // The number of users in the direct team
+        totalIncomeEarned, // Total of all the bonus types
+        bonuses, // Object containing all 5 bonus types
       },
     });
-
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
     res.status(500).json({
@@ -262,4 +301,4 @@ exports.getDashboard = async (req, res) => {
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
-}
+};
