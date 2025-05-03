@@ -3,7 +3,7 @@ const Transaction = require("../models/Transaction");
 exports.getTransactions = async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { limit = 10, startWith = "" } = req.query;  // Default limit to 10 and startWith to an empty string
+      const { limit = 500, startWith = "" } = req.query;  // Default limit to 10 and startWith to an empty string
   
       if (!userId) {
         return res.status(400).json({

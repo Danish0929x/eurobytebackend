@@ -1,5 +1,5 @@
 const User = require("../models/User");
-
+const { getTeamBusiness } = require("../utils/getTeamBusiness");
 // ROUTE: 1 Get referral name: GET "/api/auth/getreferralname/:id". It requires auth
 async function getReferralNameById(req, res) {
   try {
@@ -58,9 +58,9 @@ async function getReferrals(req, res) {
       name: ref.Name || "none",
       referrer: ref.referrer || "none",
       registrationDate: ref.RegistrationDate || "none",
-      investmentAmount: ref.InvestedAmount || 0,
+      investmentAmount: ref.packageAmount || 0,
       level: ref.Level,
-      status: ref.InvestedAmount > 0 ? "Active" : "Inactive",
+      status: ref.packageAmount > 0 ? "Active" : "Inactive",
     }));
 
     res.json({
@@ -86,26 +86,58 @@ async function getReferralTree(userId, depthLevel) {
         startWith: "$userId",
         connectFromField: "userId",
         connectToField: "referrer",
-        maxDepth: depthLevel - 1, // Subtract 1 because we start counting from the userId
+        maxDepth: depthLevel - 1,
         depthField: "level",
         as: "referrals",
       },
     },
+    { $unwind: "$referrals" },
     {
-      $unwind: "$referrals",
+      $lookup: {
+        from: "packages", // name of the Package collection
+        localField: "referrals.userId",
+        foreignField: "userId",
+        as: "packageInfo",
+      },
+    },
+    {
+      $addFields: {
+        latestPackage: {
+          $arrayElemAt: [
+            {
+              $filter: {
+                input: {
+                  $slice: [
+                    {
+                      $sortArray: {
+                        input: "$packageInfo",
+                        sortBy: { createdAt: -1 },
+                      },
+                    },
+                    1,
+                  ],
+                },
+                as: "pkg",
+                cond: { $eq: ["$$pkg.status", "Active"] },
+              },
+            },
+            0,
+          ],
+        },
+      },
     },
     {
       $project: {
         userId: "$referrals.userId",
-        referrer: "$referrals.referrer", // Referrer is now included in the projection
+        referrer: "$referrals.referrer",
         Name: "$referrals.fullname",
         RegistrationDate: "$referrals.createdAt",
-        Level: { $add: ["$referrals.level", 1] }, // Add 1 to the level for better clarity
-        InvestedAmount: { $literal: 0 }, // Placeholder for InvestedAmount, adjust if needed
+        Level: { $add: ["$referrals.level", 1] },
+        packageAmount: { $ifNull: ["$latestPackage.packageAmount", 0] },
       },
     },
     {
-      $sort: { Level: 1, RegistrationDate: 1 }, // Sorting by Level and then Registration Date
+      $sort: { Level: 1, RegistrationDate: 1 },
     },
   ];
 
@@ -117,13 +149,34 @@ async function getReferralTree(userId, depthLevel) {
     throw error;
   }
 }
+async function getTeamBusinessController(req, res) {
+  try {
+    const userId = req.user.userId; // from auth middleware
 
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
 
+    const totalBusiness = await getTeamBusiness(userId);
 
-
+    return res.status(200).json({
+      success: true,
+      message: "Team business calculated successfully",
+      data: { userId, totalBusiness },
+    });
+  } catch (error) {
+    console.error("Error in getTeamBusiness API:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+}
 
 // EXPORTS
 module.exports = {
   getReferralNameById,
   getReferrals,
+  getTeamBusinessController,
 }
