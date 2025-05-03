@@ -3,25 +3,35 @@ const User = require("../models/User");
 
 // ROUTE: Get Team Business for a User: GET "/api/user/get-team-business". It requires auth
 async function getTeamBusiness(userId) {
-    try {
-      // 1. Fetch the user's referral tree (downline)
-      const referralTree = await getReferralTree(userId);
-  
-      // 2. For each user in the referral tree, calculate their total investment
-      let totalBusiness = 0;
-  
-      for (const user of referralTree) {
-        const userInvestment = await calculateTotalInvestment(user.userId);
-        totalBusiness += userInvestment;
+  try {
+    // 1. Get the referral tree (downline users)
+    const referralTree = await getReferralTree(userId);
+
+    const userIds = referralTree.map(user => user.userId); // Extract userIds
+
+    if (userIds.length === 0) return 0;
+
+    // 2. One aggregation to get total business of all downline users
+    const result = await Package.aggregate([
+      {
+        $match: { userId: { $in: userIds } }
+      },
+      {
+        $group: {
+          _id: null,
+          totalBusiness: { $sum: "$packageAmount" }
+        }
       }
-  
-      return totalBusiness;
-  
-    } catch (error) {
-      console.error("Error calculating team business:", error);
-      throw new Error("Error calculating team business");
-    }
+    ]);
+
+    return result.length > 0 ? result[0].totalBusiness : 0;
+
+  } catch (error) {
+    console.error("Error calculating team business:", error);
+    throw new Error("Error calculating team business");
   }
+}
+
 // Fetch referral tree (downline) for a given user using aggregation
 async function getReferralTree(userId) {
   const pipeline = [
