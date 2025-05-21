@@ -15,35 +15,40 @@ const Wallet = require("../models/Wallet");
 async function performWalletTransaction(
   userId,
   amount,
+  walletName,
   transactionRemark,
   status
 ) {
   const amt = Number(amount);
   if (isNaN(amt)) throw new Error('Invalid amount');
 
-  const wallet = await Wallet.findOne({ userId });
-  if (!wallet) throw new Error("User's wallet not found");
+   if (!["USDTBalance", "depositBalance"].includes(walletName)) {
+    throw new Error("Invalid wallet name. Must be 'USDTBalance' or 'depositBalance'");
+  }
+
+  const userWallet = await Wallet.findOne({ userId });
+  if (!userWallet) throw new Error("User's wallet not found");
 
   // For debits on Pending/Completed, enforce balance check
   if ((status === 'Completed' || status === 'Pending') && amt < 0) {
-    if (wallet.USDTBalance < Math.abs(amt)) {
+    if (userWallet[walletName] < Math.abs(amt)) {
       throw new Error('Insufficient balance for the debit transaction');
     }
   }
 
   // Apply immediately for Pending/Completed
-  if (status === 'Completed' || status === 'Pending') {
-    wallet.USDTBalance += amt;
-    await wallet.save();
+   if (status === "Completed" || status === "Pending") {
+    userWallet[walletName] += amt;
+    await userWallet.save();
   }
-
   const tx = new Transaction({
     userId,
     transactionRemark,
     creditedAmount: amt > 0 ? amt : 0,
     debitedAmount:  amt < 0 ? Math.abs(amt) : 0,
+    walletName,
     status,
-    currentBalance: wallet.USDTBalance
+    currentBalance: userWallet[walletName],
   });
 
   return tx.save();
@@ -67,10 +72,15 @@ async function updateTransactionStatus(transactionId, newStatus) {
     const wallet = await Wallet.findOne({ userId: tx.userId });
     if (!wallet) throw new Error("User's wallet not found");
 
-    wallet.USDTBalance += tx.debitedAmount;
-    await wallet.save();
+     if (!["USDTBalance", "depositBalance"].includes(tx.walletName)) {
+      throw new Error("Invalid walletName in transaction");
+    }
 
-    tx.currentBalance = wallet.USDTBalance;
+
+    userWallet[tx.walletName] += tx.debitedAmount;
+    await userWallet.save();
+
+    tx.currentBalance = userWallet[tx.walletName];
   }
 
   tx.status = newStatus;

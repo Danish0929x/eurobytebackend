@@ -12,6 +12,12 @@ const walletSchema = new mongoose.Schema({
     required: true,
     default: 0,
     min: 0
+  },
+  depositBalance: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
   }
 }, { timestamps: true });
 
