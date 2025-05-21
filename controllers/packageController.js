@@ -1,55 +1,41 @@
 const Package = require('../models/Packages');
+const { distributeDirectBonus } = require("../functions/distributeDirectBonus");
 
 exports.createPackage = async (req, res) => {
   try {
-    const { userId, packageAmount } = req.body;
+     const userId = req.user.userId; // Get userId from the request
+    const { packageAmount } = req.body;
 
-    // Validate inputs
     if (!userId || !packageAmount) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID and Package Amount are required"
-      });
+      return res.status(400).json({ message: "User ID and package amount are required" });
     }
 
-    // Validate package amount is a positive number
-    if (isNaN(packageAmount) || packageAmount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Package Amount must be a positive number"
-      });
-    }
-
-    // Create new package
-    const newPackage = await Package.create({
+    // Create a new package
+    const newPackage = new Package({
       userId,
       packageAmount,
+      ROI: 0,
       startDate: new Date(),
-      status: 'Active'
+      status: "Active"
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Package created successfully",
-      data: {
-        packageId: newPackage._id,
-        userId: newPackage.userId,
-        packageAmount: newPackage.packageAmount,
-        startDate: newPackage.startDate,
-        status: newPackage.status
-      }
+    // Save the new package to the database
+    await newPackage.save();
+
+    // Call distributeDirectBonus after the package is saved
+    await distributeDirectBonus(packageAmount, userId);  // Pass the packageAmount and userId to the function
+
+    // Respond with success
+    res.status(201).json({
+      message: "Package created successfully and bonus distributed",
+      data: newPackage
     });
 
-  } catch (error) {
-    console.error("Error creating package:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create package",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+  } catch (err) {
+    console.error("Error creating package:", err);
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-
 
 exports.getPackagesByUserId = async (req, res) => {
   try {
