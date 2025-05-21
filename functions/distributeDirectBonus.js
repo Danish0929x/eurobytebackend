@@ -1,6 +1,6 @@
 // functions/distributeDirectBonus.js
 
-const Package = require("../models/Package");
+const Package = require("../models/Packages");
 const User = require("../models/User");
 const {
   performWalletTransaction,
