@@ -48,6 +48,7 @@ const withdrawUSDT = async (req, res) => {
     await performWalletTransaction(
       userId,
       -amount,
+      "USDTBalance",
       "USDT Withdraw - USDT Withdrawal",
       "Pending"
     );

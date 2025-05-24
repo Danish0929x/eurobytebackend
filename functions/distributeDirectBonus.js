@@ -37,7 +37,8 @@ async function distributeDirectBonus(packageAmount, userId) {
     // Call performWalletTransaction to handle the bonus distribution to the referrer
     await performWalletTransaction(
       user.referrer, // Referrer's userId
-      bonusAmount, // Bonus amount (10% of package)
+      bonusAmount,
+      "USDTBalance", // Bonus amount (10% of package)
       transactionRemark, // Transaction remark
       "Completed" // Status of the transaction
     );
