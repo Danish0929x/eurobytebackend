@@ -2,9 +2,8 @@
 
 const Package = require("../models/Packages");
 const User = require("../models/User");
-const {
-  performWalletTransaction,
-} = require("../utils/performWalletTransaction");
+const { performWalletTransaction } = require("../utils/permorfWalletTransaction");
+
 
 async function distributeDirectBonus(packageAmount, userId) {
   try {

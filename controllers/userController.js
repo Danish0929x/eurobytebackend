@@ -200,6 +200,7 @@ exports.getWallet = async (req, res) => {
     const walletData = {
       userId: wallet.userId,
       USDTBalance: wallet.USDTBalance,
+      depositBalance: wallet.depositBalance,
       fullname: user.fullname,
       email: user.email,
       withdrawAddress: wallet.withdrawAddress,
