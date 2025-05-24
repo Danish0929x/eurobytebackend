@@ -1,5 +1,6 @@
 const Package = require('../models/Packages');
 const { distributeDirectBonus } = require("../functions/distributeDirectBonus");
+const { performWalletTransaction } = require('../utils/permorfWalletTransaction');
 
 exports.createPackage = async (req, res) => {
   try {
@@ -9,6 +10,15 @@ exports.createPackage = async (req, res) => {
     if (!userId || !packageAmount) {
       return res.status(400).json({ message: "User ID and package amount are required" });
     }
+    
+
+      await performWalletTransaction(
+      userId,
+      -packageAmount,
+      "depositBalance",
+      `Package purchase of $${packageAmount}`,
+      "Completed"
+    );
 
     // Create a new package
     const newPackage = new Package({
@@ -21,6 +31,7 @@ exports.createPackage = async (req, res) => {
 
     // Save the new package to the database
     await newPackage.save();
+
 
     // Call distributeDirectBonus after the package is saved
     await distributeDirectBonus(packageAmount, userId);  // Pass the packageAmount and userId to the function
